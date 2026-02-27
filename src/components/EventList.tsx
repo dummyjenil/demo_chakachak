@@ -17,10 +17,12 @@ export const EventList: React.FC = () => {
 
   const filteredEvents = events.filter(e => {
     const matchesSearch = e.name.toLowerCase().includes(search.toLowerCase()) || 
-                         e.client_name.toLowerCase().includes(search.toLowerCase());
+                         (e.client_name?.toLowerCase().includes(search.toLowerCase()) ?? false);
     if (filter === 'all') return matchesSearch;
-    if (filter === 'pending') return matchesSearch && (e.total_budget - (e.received_amount || 0)) > 0;
-    if (filter === 'paid') return matchesSearch && (e.total_budget - (e.received_amount || 0)) <= 0;
+    const received = e.received_amount ?? 0;
+    const budget = e.total_budget ?? 0;
+    if (filter === 'pending') return matchesSearch && (budget - received) > 0;
+    if (filter === 'paid') return matchesSearch && (budget - received) <= 0;
     return matchesSearch;
   });
 
@@ -59,9 +61,11 @@ export const EventList: React.FC = () => {
       </header>
 
       <main className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredEvents.map((event, i) => {
-          const pending = event.total_budget - (event.received_amount || 0);
-          const progress = event.total_budget > 0 ? (event.received_amount / event.total_budget) * 100 : 0;
+        {(filteredEvents || []).map((event, i) => {
+          const received = event.received_amount ?? 0;
+          const budget = event.total_budget ?? 0;
+          const pending = budget - received;
+          const progress = budget > 0 ? (received / budget) * 100 : 0;
 
           return (
             <motion.div
@@ -89,7 +93,7 @@ export const EventList: React.FC = () => {
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/clients/${event.client_id}`);
+                    if (event.client_id) navigate(`/clients/${event.client_id}`);
                   }}
                   className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 hover:text-primary transition-colors"
                 >
@@ -101,11 +105,11 @@ export const EventList: React.FC = () => {
                 <div className="flex justify-between items-end">
                   <div className="space-y-1">
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Received</p>
-                    <p className="text-xl font-black text-white">{formatCurrency(event.received_amount || 0)}</p>
+                    <p className="text-xl font-black text-white">{formatCurrency(received)}</p>
                   </div>
                   <div className="text-right space-y-1">
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total</p>
-                    <p className="text-sm font-bold text-slate-400">{formatCurrency(event.total_budget)}</p>
+                    <p className="text-sm font-bold text-slate-400">{formatCurrency(budget)}</p>
                   </div>
                 </div>
 

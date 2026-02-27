@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, User, Phone, Calendar, FileText, ChevronRight, Edit } from 'lucide-react';
+import { ArrowLeft, User, Phone, Calendar, FileText, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatCurrency, formatDate, cn } from '../lib/utils';
 import { useAppStore } from '../store/appStore';
@@ -24,6 +24,13 @@ export const ClientDetails: React.FC = () => {
     }
   }, [id]);
 
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this client? All associated events will also be affected.')) {
+      await api.deleteClient(Number(id));
+      navigate('/events');
+    }
+  };
+
   React.useEffect(() => {
     fetchClientDetails();
     window.addEventListener('client-updated', fetchClientDetails);
@@ -45,12 +52,20 @@ export const ClientDetails: React.FC = () => {
           </div>
           <span className="text-xs font-black uppercase tracking-widest">Back</span>
         </button>
-        <button 
-          onClick={() => setActiveModal('edit_client', client)}
-          className="w-12 h-12 glass flex items-center justify-center rounded-xl text-primary hover:bg-primary hover:text-white transition-all"
-        >
-          <Edit size={20} />
-        </button>
+        <div className="flex gap-4">
+          <button 
+            onClick={() => setActiveModal('edit_client', client)}
+            className="w-12 h-12 glass flex items-center justify-center rounded-xl text-primary hover:bg-primary hover:text-white transition-all"
+          >
+            <Edit size={20} />
+          </button>
+          <button 
+            onClick={handleDelete}
+            className="w-12 h-12 glass flex items-center justify-center rounded-xl text-red-500 hover:bg-red-500 hover:text-white transition-all"
+          >
+            <Trash2 size={20} />
+          </button>
+        </div>
       </header>
 
       <section className="px-6 lg:px-10 mb-16">
@@ -104,7 +119,7 @@ export const ClientDetails: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {client.events.map((event: any, i: number) => {
+          {(client.events || []).map((event: any, i: number) => {
             const pending = event.total_budget - (event.received_amount || 0);
             return (
               <motion.div

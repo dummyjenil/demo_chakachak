@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../store/appStore';
-import { User, Phone, Wallet, Calendar, Plus, CheckCircle, XCircle, PartyPopper, RefreshCw, Power, Edit } from 'lucide-react';
+import { User, Phone, Wallet, Calendar, Plus, CheckCircle, XCircle, PartyPopper, RefreshCw, Power, Edit, Trash2 } from 'lucide-react';
 import { formatCurrency, cn } from '../lib/utils';
 import { AddBonusModal } from './Modals';
 import { api } from '../services/api';
@@ -16,20 +16,27 @@ export const StaffList: React.FC = () => {
   }, [fetchStaff]);
 
   const handleToggleStatus = async (id: number, currentStatus: string) => {
-    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     await api.updateStaffStatus(id, newStatus);
     fetchStaff();
   };
 
-  const handleReset = async (id: number) => {
-    if (window.confirm('Are you sure you want to reset this staff profile? All logs will be cleared.')) {
-      await api.resetStaff(id);
+  const handleReset = async (id: number, currentBalance: number) => {
+    if (window.confirm(`Are you sure you want to reset this staff profile? This will log a salary payment of ${formatCurrency(currentBalance)}.`)) {
+      await api.resetStaff(id, currentBalance);
       fetchStaff();
     }
   };
 
-  const handleAddAttendance = async (id: number) => {
-    await api.createStaffLog({ staff_id: id, type: 'attendance', amount: 0, description: 'Daily Attendance' });
+  const handleDeleteStaff = async (id: number, name: string) => {
+    if (window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
+      await api.deleteStaff(id);
+      fetchStaff();
+    }
+  };
+
+  const handleAddAttendance = async (id: number, rate: number) => {
+    await api.addStaffBalance(id, rate, 'attendance', 'Daily Attendance');
     fetchStaff();
   };
 
@@ -41,9 +48,8 @@ export const StaffList: React.FC = () => {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {staff.map((member, i) => {
-          const totalEarned = (member.per_day_rate * member.active_days) + (member.total_bonus || 0);
-          const pending = (totalEarned + member.old_balance) - (member.total_advance || 0);
+        {(staff || []).map((member, i) => {
+          const pending = member.deposit_amount || 0;
 
           return (
             <motion.div
@@ -58,7 +64,7 @@ export const StaffList: React.FC = () => {
                   onClick={() => handleToggleStatus(member.id, member.status)}
                   className={cn(
                     "p-2 rounded-xl border transition-all",
-                    member.status === 'active' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-red-500/10 text-red-500 border-red-500/20"
+                    member.status === 'ACTIVE' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-red-500/10 text-red-500 border-red-500/20"
                   )}
                 >
                   <Power size={16} />
@@ -70,43 +76,45 @@ export const StaffList: React.FC = () => {
                   <Edit size={16} />
                 </button>
                 <button 
-                  onClick={() => handleReset(member.id)}
+                  onClick={() => handleReset(member.id, pending)}
                   className="p-2 rounded-xl glass text-slate-400 hover:text-white transition-all"
                 >
                   <RefreshCw size={16} />
+                </button>
+                <button 
+                  onClick={() => handleDeleteStaff(member.id, member.name)}
+                  className="p-2 rounded-xl glass text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                >
+                  <Trash2 size={16} />
                 </button>
               </div>
 
               <div className="flex items-center gap-6 mb-8">
                 <div className="relative">
                   <div className="w-20 h-20 rounded-[1.5rem] bg-primary/10 flex items-center justify-center border border-primary/20 overflow-hidden group-hover:scale-105 transition-transform">
-                    {member.photo_url ? (
-                      <img src={member.photo_url} alt={member.name} className="w-full h-full object-cover" />
+                    {member.document_links && member.document_links.length > 0 ? (
+                      <img src={member.document_links[0]} alt={member.name} className="w-full h-full object-cover" />
                     ) : (
                       <User className="text-primary" size={40} />
                     )}
                   </div>
                   <div className={cn(
                     "absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-4 border-surface",
-                    member.status === 'active' ? "bg-emerald-500" : "bg-red-500"
+                    member.status === 'ACTIVE' ? "bg-emerald-500" : "bg-red-500"
                   )} />
                 </div>
                 <div>
                   <h3 className="text-2xl font-black text-white leading-tight">{member.name}</h3>
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1 flex items-center gap-2">
-                    <Phone size={12} /> {member.phone || 'No phone'}
+                    <Phone size={12} /> {member.mobile_num || 'No phone'}
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="grid grid-cols-1 gap-4 mb-8">
                 <div className="glass p-4 rounded-2xl">
                   <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Daily Rate</p>
-                  <p className="text-xl font-black text-white">{formatCurrency(member.per_day_rate)}</p>
-                </div>
-                <div className="glass p-4 rounded-2xl">
-                  <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Active Days</p>
-                  <p className="text-xl font-black text-white">{member.active_days}</p>
+                  <p className="text-xl font-black text-white">{formatCurrency(member.rate)}</p>
                 </div>
               </div>
 
@@ -118,7 +126,7 @@ export const StaffList: React.FC = () => {
                   </div>
                   <div className="flex gap-3">
                     <button 
-                      onClick={() => handleAddAttendance(member.id)}
+                      onClick={() => handleAddAttendance(member.id, member.rate)}
                       className="w-12 h-12 glass flex items-center justify-center text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all rounded-xl"
                       title="Mark Attendance"
                     >

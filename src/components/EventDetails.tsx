@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Share2, Edit, Plus, Calendar, MapPin, FileText, ChevronDown, ChevronUp, PartyPopper, User, Phone, CreditCard } from 'lucide-react';
+import { ArrowLeft, Share2, Edit, Plus, Calendar, MapPin, FileText, ChevronDown, ChevronUp, PartyPopper, User, Phone, CreditCard, Trash2 } from 'lucide-react';
 import { useAppStore, SubEvent } from '../store/appStore';
 import { formatCurrency, cn, formatDate } from '../lib/utils';
 import { AddSubEventModal } from './Modals';
@@ -26,6 +26,20 @@ export const EventDetails: React.FC = () => {
       setLoading(false);
     }
   }, [id]);
+
+  const handleDeleteEvent = async () => {
+    if (window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+      await api.deleteEvent(Number(id));
+      navigate('/events');
+    }
+  };
+
+  const handleDeletePhase = async (phaseId: number) => {
+    if (window.confirm('Are you sure you want to delete this phase?')) {
+      await api.deleteSubEvent(phaseId);
+      fetchEventDetails();
+    }
+  };
 
   React.useEffect(() => {
     fetchEventDetails();
@@ -72,6 +86,12 @@ export const EventDetails: React.FC = () => {
             className="w-12 h-12 glass flex items-center justify-center rounded-xl text-primary hover:bg-primary hover:text-white transition-all"
           >
             <Edit size={20} />
+          </button>
+          <button 
+            onClick={handleDeleteEvent}
+            className="w-12 h-12 glass flex items-center justify-center rounded-xl text-red-500 hover:bg-red-500 hover:text-white transition-all"
+          >
+            <Trash2 size={20} />
           </button>
         </div>
       </header>
@@ -136,7 +156,7 @@ export const EventDetails: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              {event.subEvents.map((sub: SubEvent) => (
+              {(event.subEvents || []).map((sub: SubEvent) => (
                 <motion.div
                   key={sub.id}
                   layout
@@ -171,6 +191,15 @@ export const EventDetails: React.FC = () => {
                         className="w-10 h-10 glass flex items-center justify-center rounded-xl text-primary hover:bg-primary hover:text-white transition-all"
                       >
                         <Edit size={16} />
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeletePhase(sub.id);
+                        }}
+                        className="w-10 h-10 glass flex items-center justify-center rounded-xl text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                      >
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </div>

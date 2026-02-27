@@ -92,7 +92,7 @@ export const Dashboard: React.FC = () => {
             <button className="text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-white transition-colors">View Archive</button>
           </div>
           <div className="space-y-4">
-            {stats.recentActivity.map((activity: any, i: number) => (
+            {(stats.recentActivity || []).map((activity: any, i: number) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, x: -20 }}
